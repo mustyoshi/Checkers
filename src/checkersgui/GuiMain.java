@@ -257,7 +257,33 @@ public class GuiMain extends javax.swing.JFrame {
 
             for (int x = (y + 1) % 2; x < 8; x = x + 2) {
                 //eboard[x][y] = 0;
-
+            	
+/*Here are some ideas for the evaluator, but I'm unsure how to implement completely correctly with your code.
+ * They are not all necessarily good, but they are definite possibilities for implementation.
+ * 
+ * Pseudo code for evaluator: 
+ * 
+ * if no enemy pieces remain 
+ * 		goalValue increase (win state for game, should always be the move made)
+ * 
+ * if piece moving into jumpspace
+ * 		goalValue decrease (Avoid moving to be captured)
+ * 
+ * if piece moving to side of board
+ * 		goalValue decrease (Avoid moving to side of board since it lowers ability to move)
+ * 
+ * if non King piece
+ * 		goalValue increase (We would rather create more kings than move our current kings)
+ * 
+ * if pyramid is built (One piece in front, two diagonally behind)
+ * 		goalValue increase (Pyramids block players from capturing our pieces)
+ * 
+ * if backrow piece
+ * 		goalValue decrease (Back row shouldn't be moved for as long as possible)
+ * 
+ * if moving into center
+ *		goalValue increase (Center of the board is important territory to control for winning) 		
+ */
                 if (((topRow >> p) & 1) == 1) {
                     //eboard[x][y] = 1;
                     //System.out.println("y:" + y + ", " + (8.0 - (y + 1)) / (8.0));
@@ -485,7 +511,6 @@ public class GuiMain extends javax.swing.JFrame {
          if (eval >= maxGoal) {
          maxGoal = eval;
          nextState = s;
-
          }
          }
          System.out.println("Chose " + nextState);*/
