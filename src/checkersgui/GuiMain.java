@@ -21,18 +21,27 @@ class Successor {
     public int chose;
     public ArrayList<Successor> successors;
     public boolean isJump;
-    Successor(int depth, int maxDepth, String initState) {
+    public boolean side;
+    public boolean isKing;
+
+    Successor(int depth, int maxDepth, String initState, boolean side) {
+        this.side = side;
         isJump = false;
+        isKing = false;
         successors = new ArrayList<Successor>();
         //System.out.println("Checking at depth  " + depth + " against " + initState);
-        value = -9999999.0;
-        if (depth >= maxDepth) {
+        value = -0.0;
+
+        state = initState;
+
+        value = GuiMain.Evaluate(state, side);
+        if (depth > maxDepth) {
             return;
         }
-        state = initState;
-        value = GuiMain.Evaluate(state, depth % 1 == 0);
-        ArrayList<String> sucStates = GuiMain.GetSuccessors(state, depth % 1 == 0);
-        
+        //System.out.println("My value at depth " + depth + " is " + value);
+
+        ArrayList<String> sucStates = GuiMain.GetSuccessors(state, side);
+
         for (String s : sucStates) {
             if (s.startsWith("J:")) {
                 isJump = true;
@@ -43,28 +52,68 @@ class Successor {
         if (isJump) {
             for (String s : sucStates) {
                 if (s.startsWith("J:")) {
-                    sucStates2.add(s.substring(2));
+                    sucStates2.add(s);
                 }
             }
             sucStates = sucStates2;
+
         }
+        if(state.contains("K")){
+            isKing = true;
+        }
+        double bestOpt = (side) ? -99999 : 99999;
         for (String s : sucStates) {
-            Successor toAdd = new Successor(depth + 1, maxDepth, s);
+            Successor toAdd = new Successor(depth + 1, maxDepth, s.substring(s.indexOf(";") + 1), (!isKing && isJump) ? side : !side);
             //Check for successive jumps.
-            successors.add(toAdd);
-            if (depth % 2 == 1) {
-                if (toAdd.value < value) {
-                    value = toAdd.value;
-                    chose = successors.size() - 1;
+            if (!isKing && (isJump && toAdd.isJump)) {
+
+                for (Successor t : toAdd.successors) {
+                    successors.add(t);
+                    if (side) {
+                        bestOpt = Math.max(bestOpt, t.value);
+                    } else {
+                        bestOpt = Math.min(bestOpt, t.value);
+                    }
                 }
             } else {
-                if (toAdd.value > value) {
-                    value = toAdd.value;
-                    chose = successors.size() - 1;
-                }
+
+                successors.add(toAdd);
+            }
+            //System.out.println("Mini maxing " + depth);
+            //Check for successive jumps.
+
+            if (side) {
+                bestOpt = Math.max(bestOpt, toAdd.value);
+            } else {
+                bestOpt = Math.min(bestOpt, toAdd.value);
+
             }
         }
+        if (depth ==0) {
+            System.out.println("My best successor is " + bestOpt);
+        }
 
+        value = bestOpt;
+        // System.out.println("My value at depth " + depth + " is now " + value);
+
+    }
+
+    Successor getState(String state) {
+        if (this.state == state) {
+            return this;
+        }
+        for (Successor s : this.successors) {
+            if (s.state == state) {
+                return s;
+            }
+
+        }
+        for (Successor s : this.successors) {
+            if (s.getState(state) != null) {
+                return s.getState(state);
+            }
+        }
+        return null;
     }
 }
 
@@ -75,6 +124,7 @@ public class GuiMain extends javax.swing.JFrame {
      */
     private int st = 0;
     private Successor currentSuc;
+    private int look = 4;
 
     public GuiMain() {
         initComponents();
@@ -82,7 +132,7 @@ public class GuiMain extends javax.swing.JFrame {
         this.stateBox.setText(checkerBoard1.state);
 
         checkerBoard1.setState(checkerBoard1.state, true);
-        System.out.println(getMove(6, 7, 7, 5, false));
+        //System.out.println(getMove(6, 7, 7, 5, false));
         //checkerBoard1.setState("ff78000000008bff0000000000000000", true);
         //System.out.println("Current State is " + (Evaluate(state, false)));
         //ArrayList<String> sucs = GetSuccessors(state, true);
@@ -129,12 +179,12 @@ public class GuiMain extends javax.swing.JFrame {
         return String.format("%08x%08x%08x%08x", topSlot, botSlot, topK, botK);
     }
 
-    public String getMove(int x1, int y1, int x2, int y2, boolean side) {
+    public static String getMove(int x1, int y1, int x2, int y2, boolean side) {
 
         if (side) {
-            return String.format("%d->%d", (4 * y1) + (x1 / 2) + (y1 % 2), (4 * y2) + (x2 / 2) + (y2 % 2));
+            return String.format("%d->%d:%s", (4 * y1) + (x1 / 2) + (y1 % 2), (4 * y2) + (x2 / 2) + (y2 % 2), y2 == 0 ? "K" : "");
         } else {
-            return String.format("%d->%d", (4 * (7 - y1)) + ((x1 - 7) / 2) + (y1 % 2), (4 * (7 - y2)) + ((x2 - 7) / 2) + (y2 % 2));
+            return String.format("%d->%d:%s", (4 * (7 - y1)) + ((x1 - 7) / 2) + (y1 % 2), (4 * (7 - y2)) + ((x2 - 7) / 2) + (y2 % 2), y2 == 7 ? "K" : "");
         }
     }
 
@@ -196,7 +246,7 @@ public class GuiMain extends javax.swing.JFrame {
                                         char save = eboard[x][y];
                                         eboard[x + xdir][y + ydir] = (char) ((isKing || y + ydir == kingSpot) ? piece + 1 : piece); //It gets converted to queen at y=0
                                         eboard[x][y] = 0;
-                                        arr.add(SaveState(eboard));
+                                        arr.add(getMove(x, y, x + xdir, y + ydir, side) + ";" + SaveState(eboard));
                                         eboard[x + xdir][y + ydir] = 0;
                                         eboard[x][y] = save;
                                     } else if ((x + xdir + xdir >= 0 && x + xdir + xdir <= 7) && (y + ydir + ydir >= 0 && y + ydir + ydir <= 7)
@@ -210,12 +260,13 @@ public class GuiMain extends javax.swing.JFrame {
 
                                         //Set our piece over the jump
                                         eboard[x + xdir + xdir][y + ydir + ydir] = (char) ((isKing || y + ydir + ydir == kingSpot) ? piece + 1 : piece);
+
                                         //We moved so zero our spot
                                         eboard[x][y] = 0;
 
                                         //We killed the other piece so remove it.
                                         eboard[x + xdir][y + ydir] = 0;
-                                        arr.add("J:" + SaveState(eboard));
+                                        arr.add("J:" + getMove(x, y, x + xdir, y + ydir, side) + ";" + SaveState(eboard));
                                         eboard[x + xdir][y + ydir] = save;
                                         eboard[x][y] = save1;
                                         eboard[x + xdir + xdir][y + ydir + ydir] = 0;
@@ -235,6 +286,7 @@ public class GuiMain extends javax.swing.JFrame {
     private void initCheckerBoard() {
 
         checkerBoard1.initBoard();
+        currentSuc = new Successor(0, look, checkerBoard1.state, true);
     }
 
     public static float Evaluate(String state, boolean side) {
@@ -257,40 +309,41 @@ public class GuiMain extends javax.swing.JFrame {
 
             for (int x = (y + 1) % 2; x < 8; x = x + 2) {
                 //eboard[x][y] = 0;
-            	
-/*Here are some ideas for the evaluator, but I'm unsure how to implement completely correctly with your code.
- * They are not all necessarily good, but they are definite possibilities for implementation.
- * 
- * Pseudo code for evaluator: 
- * 
- * if no enemy pieces remain 
- * 		goalValue increase (win state for game, should always be the move made)
- * 
- * if piece moving into jumpspace
- * 		goalValue decrease (Avoid moving to be captured)
- * 
- * if piece moving to side of board
- * 		goalValue decrease (Avoid moving to side of board since it lowers ability to move)
- * 
- * if non King piece
- * 		goalValue increase (We would rather create more kings than move our current kings)
- * 
- * if pyramid is built (One piece in front, two diagonally behind)
- * 		goalValue increase (Pyramids block players from capturing our pieces)
- * 
- * if backrow piece
- * 		goalValue decrease (Back row shouldn't be moved for as long as possible)
- * 
- * if moving into center
- *		goalValue increase (Center of the board is important territory to control for winning) 		
- */
+
+                /*Here are some ideas for the evaluator, but I'm unsure how to implement completely correctly with your code.
+                 * They are not all necessarily good, but they are definite possibilities for implementation.
+                 * 
+                 * Pseudo code for evaluator: 
+                 * 
+                 * if no enemy pieces remain 
+                 * 		goalValue increase (win state for game, should always be the move made)
+                 * 
+                 * if piece moving into jumpspace
+                 * 		goalValue decrease (Avoid moving to be captured)
+                 * 
+                 * if piece moving to side of board
+                 * 		goalValue decrease (Avoid moving to side of board since it lowers ability to move)
+                 * 
+                 * if non King piece
+                 * 		goalValue increase (We would rather create more kings than move our current kings)
+                 * 
+                 * if pyramid is built (One piece in front, two diagonally behind)
+                 * 		goalValue increase (Pyramids block players from capturing our pieces)
+                 * 
+                 * if backrow piece
+                 * 		goalValue decrease (Back row shouldn't be moved for as long as possible)
+                 * 
+                 * if moving into center
+                 *		goalValue increase (Center of the board is important territory to control for winning) 		
+                 */
+                
                 if (((topRow >> p) & 1) == 1) {
                     //eboard[x][y] = 1;
                     //System.out.println("y:" + y + ", " + (8.0 - (y + 1)) / (8.0));
                     goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
                 }
                 if (((topKing >> p) & 1) == 1) {
-                    goalValue += 4.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
+                    goalValue += 4.0 * (1.0 + (y) / 8.0) * s;
                 }
                 if (((botRow >> p) & 1) == 1) {
                     //eboard[x][y] = 3;
@@ -298,11 +351,19 @@ public class GuiMain extends javax.swing.JFrame {
                     goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
                 }
                 if (((botKing >> p) & 1) == 1) {
-                    goalValue += 4.0 * (1.0 + (y) / 8.0) * -s;
+                    goalValue += 4.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
                 }
+
                 p++;
             }
 
+        }
+        if (side && (botRow == 0 && botKing == 0)) {
+            System.out.println("Detected move where they have no pieces");
+            goalValue = 9999; //If no enemy pieces remain, take that move
+        } else if (!side && (topRow == 0 && topKing == 0)) {
+            System.out.println("Detected move where we have no pieces");
+            goalValue = -9999; //If none of our pieces remain, do not let us take
         }
         return goalValue;
     }
@@ -422,17 +483,20 @@ public class GuiMain extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(turnInd))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(autoMove)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(compMove, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addComponent(jLabel1)
-                    .addGroup(layout.createSequentialGroup()
                         .addGap(13, 13, 13)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(stateLoad, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(autoMove)
+                            .addComponent(jLabel1))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(stateLoad)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addComponent(compMove, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addContainerGap())
             .addComponent(jScrollPane1)
         );
@@ -447,7 +511,9 @@ public class GuiMain extends javax.swing.JFrame {
                             .addComponent(autoMove)
                             .addComponent(compMove))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel1)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel1)
+                            .addComponent(stateLoad))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(compCon)
@@ -456,9 +522,7 @@ public class GuiMain extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
                                 .addGap(185, 185, 185)
-                                .addComponent(jButton1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(stateLoad))
+                                .addComponent(jButton1))
                             .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 237, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -485,7 +549,12 @@ public class GuiMain extends javax.swing.JFrame {
             //moveHistory.setText(moveHistory.getText()+ '\n' + evt.getNewValue().toString().split(":")[1] );
             //A move was made.
             turnInd.setText(checkerBoard1.getPlayerTurn() ? "Player" : "Comp");
-            System.out.println("Current State is " + (Evaluate(stateBox.getText(), false)));
+            System.out.println("Current State is " + (Evaluate(stateBox.getText(), true)));
+            jLabel1.setText("C:" + (Evaluate(stateBox.getText(), true)));
+            if (currentSuc != null) {
+                System.out.println("Checking states");
+                //currentSuc = new Successor(0, look, checkerBoard1.state, true);
+            }
             if (autoMove.isSelected()) {
                 // MakeComputerMove();
             }
@@ -514,9 +583,37 @@ public class GuiMain extends javax.swing.JFrame {
          }
          }
          System.out.println("Chose " + nextState);*/
-        Successor tree = new Successor(0, 2, checkerBoard1.state);
+        Successor tree;
+        if (currentSuc == null) {
+            tree = new Successor(0, look, checkerBoard1.state, true);
+        } else {
+            //currentSuc = currentSuc.getState(this.checkerBoard1.state);
+            //currentSuc.Extend(0, look);
+            tree = new Successor(0, look, checkerBoard1.state, true);
+        }
 
-        checkerBoard1.setState(tree.successors.get(tree.chose).state, true);
+        double w = -9999999;
+        String nextState = "";
+        //while (true) {
+        for (Successor s : tree.successors) {
+            System.out.println("Choice: " + s.value);
+            if (s.value > w) {
+                nextState = s.state;
+                w = s.value;
+                currentSuc = s;
+            }
+        }
+
+        //}
+        System.out.println("Picked " + w + ": " + nextState);
+
+        checkerBoard1.setState(nextState, true);
+        stateBox.setText(nextState);
+        jLabel1.setText("C:" + (Evaluate(nextState, true)));
+       
+        //checkerBoard1.setState(nextState, true);
+        this.invalidate();
+        this.repaint();
     }//GEN-LAST:event_compMoveActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -526,6 +623,7 @@ public class GuiMain extends javax.swing.JFrame {
 
         checkerBoard1.pastStates.remove(checkerBoard1.pastStates.size() - 1);
         checkerBoard1.setState(lastState, true);
+        stateBox.setText(lastState);
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**

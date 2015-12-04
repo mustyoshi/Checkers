@@ -120,7 +120,7 @@ public class CheckerBoard extends javax.swing.JPanel {
 
             for (int x = (y + 1) % 2; x < 8; x = x + 2) {
                 boards[x][y].removeAll();
-
+boards[x][y].validate();
                 if (((topRow >> p) & 1) == 1) {
 
                     javax.swing.JLabel peace = new javax.swing.JLabel();
