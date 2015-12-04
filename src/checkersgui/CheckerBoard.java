@@ -120,7 +120,7 @@ public class CheckerBoard extends javax.swing.JPanel {
 
             for (int x = (y + 1) % 2; x < 8; x = x + 2) {
                 boards[x][y].removeAll();
-boards[x][y].validate();
+                boards[x][y].validate();
                 if (((topRow >> p) & 1) == 1) {
 
                     javax.swing.JLabel peace = new javax.swing.JLabel();
@@ -257,8 +257,10 @@ boards[x][y].validate();
             lastMove += cell;
             lastCell = cell;
             spc.add(activePiece);
-            if(yCell == 7)
+            if (yCell == 7) {
                 System.out.println("King me");
+                activePiece.setText("k");
+            }
             activePiece = null;
             topTurn = false;
             //compTurn();
@@ -290,6 +292,10 @@ boards[x][y].validate();
 
                 lastMove += cell;
                 System.out.println(tx + "," + ty);
+                            if (ty == 7) {
+                System.out.println("King me");
+                activePiece.setText("k");
+            }
                 spc = boards[tx][ty];
                 spc.add(activePiece);
 
