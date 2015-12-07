@@ -15,6 +15,9 @@ public class CheckersGUI {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
+        String test = "12->16:";
+        System.out.println(test.substring(test.indexOf("->")+2,test.indexOf(":")));
+        
         // TODO code application logic here
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {

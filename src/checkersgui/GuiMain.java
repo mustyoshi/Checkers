@@ -122,6 +122,7 @@ public class GuiMain extends javax.swing.JFrame {
     private int st = 0;
     private Successor currentSuc;
     private int look = 4;
+    public static boolean debug = true;
 
     public GuiMain() {
         initComponents();
@@ -178,11 +179,8 @@ public class GuiMain extends javax.swing.JFrame {
 
     public static String getMove(int x1, int y1, int x2, int y2, boolean side) {
 
-        if (side) {
-            return String.format("%d->%d:%s", (4 * y1) + (x1 / 2) + (y1 % 2), (4 * y2) + (x2 / 2) + (y2 % 2), y2 == 0 ? "K" : "");
-        } else {
-            return String.format("%d->%d:%s", (4 * (7 - y1)) + ((x1 - 7) / 2) + (y1 % 2), (4 * (7 - y2)) + ((x2 - 7) / 2) + (y2 % 2), y2 == 7 ? "K" : "");
-        }
+        return String.format("%d->%d:%s", (1 + x1 / 2 + 4 * y1), (1 + x2 / 2 + 4 * y2), y2 == 0 ? "K" : "");
+
     }
 
     public static ArrayList<String> GetSuccessors(String state, boolean side) {
@@ -264,19 +262,30 @@ public class GuiMain extends javax.swing.JFrame {
                                         //We killed the other piece so remove it.
                                         eboard[x + xdir][y + ydir] = 0;
                                         String nextState = SaveState(eboard);
-                                        String moved = getMove(x, y, x + xdir, y + ydir, side);
+                                        String moved = getMove(x, y, x + xdir + xdir, y + ydir + ydir, side);
+                                        String mto = moved.substring(moved.indexOf("->") + 2, moved.indexOf(":"));
                                         boolean jumped = false;
-                                        
-                                        ArrayList<String> sucs = GetSuccessors(nextState, side);
-                                        for (String s : sucs) {
-                                            if (s.contains("J")) {
-                                                jumped = true;
-                                                //System.out.println("Double jump");
-                                                arr.add(s);
+                                        ArrayList<String> sucs;
+                                        if (!(y + ydir + ydir == kingSpot)) { //If we become a king we can't keep jumping
+                                            sucs = GetSuccessors(nextState, side);
+                                            for (String s : sucs) {
+                                                if (s.contains("J") && s.contains(mto + "->")) {
+                                                    jumped = true;
+                                                    //System.out.println("Double jump");
+                                                    arr.add(s);
+                                                } else if (s.contains("J")) {
+                                                    if(debug){
+                                                    System.out.println(s + " = " + moved);
+                                                    }
+
+                                                }
                                             }
                                         }
-                                        if(!jumped) //Double multiple jumps are compulsory
-                                            arr.add("J:" + getMove(x, y, x + xdir, y + ydir, side) + ";" + nextState);
+                                        //Do check for our continuated move.
+                                        if (!jumped) //Double multiple jumps are compulsory
+                                        {
+                                            arr.add("J:" + getMove(x, y, x + xdir + xdir, y + ydir + ydir, side) + ";" + nextState);
+                                        }
                                         eboard[x + xdir][y + ydir] = save;
                                         eboard[x][y] = save1;
                                         eboard[x + xdir + xdir][y + ydir + ydir] = 0;
@@ -347,22 +356,22 @@ public class GuiMain extends javax.swing.JFrame {
                  *		goalValue increase (Center of the board is important territory to control for winning) 		
                  */
                 if (((topRow >> p) & 1) == 1) {
-                 //eboard[x][y] = 1;
-                 //System.out.println("y:" + y + ", " + (8.0 - (y + 1)) / (8.0));
-                 goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
-                 }
-                 if (((topKing >> p) & 1) == 1) {
-                 goalValue += 4.0 * (1.0 + (y) / 8.0) * s;
-                 }
-                 if (((botRow >> p) & 1) == 1) {
-                 //eboard[x][y] = 3;
-                 //System.out.println("y:" + y + ", " + (y) / 8.0);
-                 goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
-                 }
-                 if (((botKing >> p) & 1) == 1) {
-                 goalValue += 4.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
-                 }
-                 
+                    //eboard[x][y] = 1;
+                    //System.out.println("y:" + y + ", " + (8.0 - (y + 1)) / (8.0));
+                    goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
+                }
+                if (((topKing >> p) & 1) == 1) {
+                    goalValue += 4.0 * (1.0 + (y) / 8.0) * s;
+                }
+                if (((botRow >> p) & 1) == 1) {
+                    //eboard[x][y] = 3;
+                    //System.out.println("y:" + y + ", " + (y) / 8.0);
+                    goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
+                }
+                if (((botKing >> p) & 1) == 1) {
+                    goalValue += 4.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
+                }
+
                 if (((topRow >> p) & 1) == 1 || ((topKing >> p) & 1) == 1) {
                     goalValue += 1 * s;
                 }
@@ -374,10 +383,10 @@ public class GuiMain extends javax.swing.JFrame {
 
         }
         if (side && (botRow == 0 && botKing == 0)) {
-            System.out.println("Detected move where they have no pieces");
+            //System.out.println("Detected move where they have no pieces");
             goalValue = 9999; //If no enemy pieces remain, take that move
         } else if (side && (topRow == 0 && topKing == 0)) {
-            System.out.println("Detected move where we have no pieces");
+            //System.out.println("Detected move where we have no pieces");
             goalValue = -9999; //If none of our pieces remain, do not let us take
         }
         return goalValue;
@@ -405,6 +414,7 @@ public class GuiMain extends javax.swing.JFrame {
         jScrollPane2 = new javax.swing.JScrollPane();
         moveHistory = new javax.swing.JTextArea();
         jButton1 = new javax.swing.JButton();
+        debugChk = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setPreferredSize(new java.awt.Dimension(600, 400));
@@ -485,6 +495,13 @@ public class GuiMain extends javax.swing.JFrame {
             }
         });
 
+        debugChk.setLabel("Debug Print");
+        debugChk.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                debugChkActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -498,8 +515,11 @@ public class GuiMain extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(turnInd))
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(13, 13, 13)
-                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(13, 13, 13)
+                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(debugChk))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
@@ -536,7 +556,8 @@ public class GuiMain extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 10, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
-                                .addGap(185, 185, 185)
+                                .addComponent(debugChk)
+                                .addGap(154, 154, 154)
                                 .addComponent(jButton1))
                             .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 237, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -567,7 +588,7 @@ public class GuiMain extends javax.swing.JFrame {
             System.out.println("Current State is " + (Evaluate(stateBox.getText(), true)));
             jLabel1.setText("C:" + (Evaluate(stateBox.getText(), true)));
             if (currentSuc != null) {
-                System.out.println("Checking states");
+               
                 //currentSuc = new Successor(0, look, checkerBoard1.state, true);
             }
             if (autoMove.isSelected()) {
@@ -590,16 +611,18 @@ public class GuiMain extends javax.swing.JFrame {
         double w = 9999999;
         String nextState = "";
         for (Successor s : tree.successors) {
-            System.out.println("Choice: " + s.value);
+            if (debug) {
+                System.out.println("Choice: " + s.value);
+            }
             if (s.value < w) {
                 nextState = s.state;
                 w = s.value;
                 currentSuc = s;
             }
         }
-
-        System.out.println("Picked " + w + ": " + nextState);
-
+        if (debug) {
+            System.out.println("Picked " + w + ": " + nextState);
+        }
         checkerBoard1.setState(nextState, true);
         stateBox.setText(nextState);
         jLabel1.setText("C:" + (Evaluate(nextState, true)));
@@ -618,6 +641,11 @@ public class GuiMain extends javax.swing.JFrame {
         checkerBoard1.setState(lastState, true);
         stateBox.setText(lastState);
     }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void debugChkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugChkActionPerformed
+        // TODO add your handling code here:
+        debug = debugChk.isSelected();
+    }//GEN-LAST:event_debugChkActionPerformed
 
     /**
      * @param args the command line arguments
@@ -659,6 +687,7 @@ public class GuiMain extends javax.swing.JFrame {
     private checkersgui.CheckerBoard checkerBoard1;
     private javax.swing.JLabel compCon;
     private javax.swing.JButton compMove;
+    private javax.swing.JCheckBox debugChk;
     private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;

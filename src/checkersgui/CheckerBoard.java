@@ -15,7 +15,7 @@ public class CheckerBoard extends javax.swing.JPanel {
      */
     private int cX;
     private int cY;
-    private javax.swing.JPanel[][] boards;
+    private javax.swing.JLabel[][] boards;
     private javax.swing.JLabel activePiece;
     public Color topColor;
     public Color botColor;
@@ -168,7 +168,7 @@ public class CheckerBoard extends javax.swing.JPanel {
     }
 
     public void initBoard() {
-        boards = new javax.swing.JPanel[8][8];
+        boards = new javax.swing.JLabel[8][8];
         topPieces.clear();
         botPieces.clear();
         tp = bp = 0;
@@ -176,15 +176,18 @@ public class CheckerBoard extends javax.swing.JPanel {
         cX = this.getWidth() / 8;
         System.out.println(this.getHeight());
         boolean p = true;
+        int pk = 0;
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
 
-                final javax.swing.JPanel space = new javax.swing.JPanel();
-
+                final javax.swing.JLabel space = new javax.swing.JLabel();
+                space.setOpaque(true);
                 if (p) {
                     space.setBackground(Color.white);
                 } else {
                     space.setBackground(Color.black);
+                    pk++;
+                    space.setText("" + pk);
                 }
                 p = !p;
 
@@ -228,7 +231,7 @@ public class CheckerBoard extends javax.swing.JPanel {
 
     }
 
-    private void onClicked(java.awt.event.MouseEvent evt, javax.swing.JPanel spc) {
+    private void onClicked(java.awt.event.MouseEvent evt, javax.swing.JLabel spc) {
 
         System.out.println(spc.getComponentCount());
 
