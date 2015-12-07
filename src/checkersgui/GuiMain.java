@@ -121,7 +121,7 @@ public class GuiMain extends javax.swing.JFrame {
      */
     private int st = 0;
     private Successor currentSuc;
-    private int look = 4;
+    private int look =6;
     public static boolean debug = true;
 
     public GuiMain() {
@@ -266,7 +266,7 @@ public class GuiMain extends javax.swing.JFrame {
                                         String mto = moved.substring(moved.indexOf("->") + 2, moved.indexOf(":"));
                                         boolean jumped = false;
                                         ArrayList<String> sucs;
-                                        if (!(y + ydir + ydir == kingSpot)) { //If we become a king we can't keep jumping
+                                        if (isKing || (y + ydir + ydir != kingSpot)) { //If we become a king we can't keep jumping
                                             sucs = GetSuccessors(nextState, side);
                                             for (String s : sucs) {
                                                 if (s.contains("J") && s.contains(mto + "->")) {
@@ -358,18 +358,18 @@ public class GuiMain extends javax.swing.JFrame {
                 if (((topRow >> p) & 1) == 1) {
                     //eboard[x][y] = 1;
                     //System.out.println("y:" + y + ", " + (8.0 - (y + 1)) / (8.0));
-                    goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
+                    goalValue += .25 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
                 }
                 if (((topKing >> p) & 1) == 1) {
-                    goalValue += 4.0 * (1.0 + (y) / 8.0) * s;
+                    goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
                 }
                 if (((botRow >> p) & 1) == 1) {
                     //eboard[x][y] = 3;
                     //System.out.println("y:" + y + ", " + (y) / 8.0);
-                    goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
+                    goalValue +=.25 * (1.0 + (y) / 8.0) * -s;
                 }
                 if (((botKing >> p) & 1) == 1) {
-                    goalValue += 4.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
+                    goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
                 }
 
                 if (((topRow >> p) & 1) == 1 || ((topKing >> p) & 1) == 1) {
@@ -383,10 +383,10 @@ public class GuiMain extends javax.swing.JFrame {
 
         }
         if (side && (botRow == 0 && botKing == 0)) {
-            //System.out.println("Detected move where they have no pieces");
+            System.out.println("Detected move where they have no pieces");
             goalValue = 9999; //If no enemy pieces remain, take that move
         } else if (side && (topRow == 0 && topKing == 0)) {
-            //System.out.println("Detected move where we have no pieces");
+            System.out.println("Detected move where we have no pieces");
             goalValue = -9999; //If none of our pieces remain, do not let us take
         }
         return goalValue;
