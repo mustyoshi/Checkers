@@ -2,6 +2,7 @@ package checkersgui;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Collections;
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -35,11 +36,12 @@ class Successor {
         state = initState;
 
         value = GuiMain.Evaluate(state, side);
+        level = depth;
         if (depth > maxDepth) {
             return;
         }
-        //System.out.println("My value at depth " + depth + " is " + value);
 
+        //System.out.println("My value at depth " + depth + " is " + value);
         ArrayList<String> sucStates = GuiMain.GetSuccessors(state, side);
 
         for (String s : sucStates) {
@@ -62,22 +64,37 @@ class Successor {
             isKing = true;
         }
         double bestOpt = (side) ? -99999 : 99999;
-        for (String s : sucStates) {
+        if (!(isJump && sucStates.size() == 1)) { //If there's only one possible next move...
+            for (String s : sucStates) {
 
-            Successor toAdd = new Successor(depth + 1, maxDepth, s.substring(s.indexOf(";") + 1), !side);
-            //Check for successive jumps.
+                Successor toAdd = new Successor(depth + 1, maxDepth, s.substring(s.indexOf(";") + 1), !side);
+                //Check for successive jumps.
 
-            /* if (!isKing && (isJump && toAdd.isJump)) {
-             for (Successor t : toAdd.successors) {
-             successors.add(t);
-             if (side) {
-             bestOpt = Math.max(bestOpt, t.value);
-             } else {
-             bestOpt = Math.min(bestOpt, t.value);
-             }
-             }
-             } else {
-             */
+                /* if (!isKing && (isJump && toAdd.isJump)) {
+                 for (Successor t : toAdd.successors) {
+                 successors.add(t);
+                 if (side) {
+                 bestOpt = Math.max(bestOpt, t.value);
+                 } else {
+                 bestOpt = Math.min(bestOpt, t.value);
+                 }
+                 }
+                 } else {
+                 */
+                successors.add(toAdd);
+                // }
+
+                if (side) {
+                    bestOpt = Math.max(bestOpt, toAdd.value);
+                } else {
+                    bestOpt = Math.min(bestOpt, toAdd.value);
+
+                }
+            }
+        } else {
+
+            String s = sucStates.get(0);
+            Successor toAdd = new Successor(maxDepth, maxDepth, s.substring(s.indexOf(";") + 1), !side);
             successors.add(toAdd);
             // }
 
@@ -87,6 +104,7 @@ class Successor {
                 bestOpt = Math.min(bestOpt, toAdd.value);
 
             }
+
         }
         if (depth == 0) {
             System.out.println("My best successor is " + bestOpt);
@@ -112,6 +130,7 @@ class Successor {
         }
         return null;
     }
+
 }
 
 public class GuiMain extends javax.swing.JFrame {
@@ -122,7 +141,7 @@ public class GuiMain extends javax.swing.JFrame {
     private int st = 0;
     private Successor currentSuc;
     private int look =6;
-    public static boolean debug = true;
+    public static boolean debug = false;
 
     public GuiMain() {
         initComponents();
@@ -131,7 +150,7 @@ public class GuiMain extends javax.swing.JFrame {
 
         checkerBoard1.setState(checkerBoard1.state, true);
         //System.out.println(getMove(6, 7, 7, 5, false));
-        //checkerBoard1.setState("ff78000000008bff0000000000000000", true);
+        //checkerBoard1.setState("fe14000001220c3d0000000000000000", true);
         //System.out.println("Current State is " + (Evaluate(state, false)));
         //ArrayList<String> sucs = GetSuccessors(state, true);
 
@@ -174,12 +193,36 @@ public class GuiMain extends javax.swing.JFrame {
 
         }
         //System.out.println("Top has " + t1 + " and bot has " + t2);
-        return String.format("%08x%08x%08x%08x", topSlot, botSlot, topK, botK);
+        //return String.format("%08x%08x%08x%08x", topSlot, botSlot, topK, botK);
+        String ts =Integer.toHexString(topSlot);
+        int sz = ts.length();
+        for (int i = 0; i < 8- sz; i++) {
+            ts = "0" + ts;// + ts;
+        }
+        String bs = Integer.toHexString(botSlot);
+        sz = bs.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            bs ="0" + bs;// + bs;
+        }
+        String tk = Integer.toHexString(topK);
+        sz = tk.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            tk = "0" + tk;
+        }
+        String bk = Integer.toHexString(botK);
+        sz = bk.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            bk = "0" + bk;
+        }
+        String state = ts + bs + tk + bk;
+        //System.out.println("Giving " + state);
+        return state; //Long.toHexString(topSlot) + Long.toHexString(botSlot) + Long.toHexString(topK) + Long.toHexString(botK);
     }
 
     public static String getMove(int x1, int y1, int x2, int y2, boolean side) {
 
-        return String.format("%d->%d:%s", (1 + x1 / 2 + 4 * y1), (1 + x2 / 2 + 4 * y2), y2 == 0 ? "K" : "");
+        return (1 + x1 / 2 + 4 * y1) + "->" + (1 + x2 / 2 + 4 * y2) +  (y2 == 0 ? ":K" : ":");
+        //return String.format("%d->%d:%s", (1 + x1 / 2 + 4 * y1), (1 + x2 / 2 + 4 * y2), y2 == 0 ? "K" : "");
 
     }
 
@@ -221,6 +264,7 @@ public class GuiMain extends javax.swing.JFrame {
         int kingSpot = (side) ? 0 : 7;
         // System.out.println("Our kingside is " + kingSpot);
         boolean isKing = false;
+        boolean jumped1 = false; //Small optimizations
         for (int y = 0; y < 8; y++) {
 
             for (int x = (y + 1) % 2; x < 8; x = x + 2) {
@@ -247,9 +291,9 @@ public class GuiMain extends javax.swing.JFrame {
                                     } else if ((x + xdir + xdir >= 0 && x + xdir + xdir <= 7) && (y + ydir + ydir >= 0 && y + ydir + ydir <= 7)
                                             && eboard[x + xdir][y + ydir] != piece && eboard[x + xdir][y + ydir] != piece + 1 && eboard[x + xdir + xdir][y + ydir + ydir] == 0) {
                                         //System.out.println("This is a jump");
+
                                         //This means the spot is held by an opposing piece.
                                         //I think for the sake of easyness... We'll check for successive jumps during the next phase.
-
                                         char save = eboard[x + xdir][y + ydir]; //Get piece we just killed
                                         char save1 = eboard[x][y]; //Get our own piece
 
@@ -263,26 +307,25 @@ public class GuiMain extends javax.swing.JFrame {
                                         eboard[x + xdir][y + ydir] = 0;
                                         String nextState = SaveState(eboard);
                                         String moved = getMove(x, y, x + xdir + xdir, y + ydir + ydir, side);
+                                        //String mfr = moved.substring(0, moved.indexOf("->"));
                                         String mto = moved.substring(moved.indexOf("->") + 2, moved.indexOf(":"));
                                         boolean jumped = false;
                                         ArrayList<String> sucs;
                                         if (isKing || (y + ydir + ydir != kingSpot)) { //If we become a king we can't keep jumping
+                                            //System.out.println("Getting successor from " + mfr + "->" + mto);
                                             sucs = GetSuccessors(nextState, side);
+                                            // System.out.println("Got " + sucs.size());
                                             for (String s : sucs) {
-                                                if (s.contains("J") && s.contains(mto + "->")) {
+                                                if (s.contains("J") && (s.contains(mto))) {
                                                     jumped = true;
-                                                    //System.out.println("Double jump");
+                                                    //System.out.println("Found: " + s + " = " + mfr + "->" + mto);
                                                     arr.add(s);
-                                                } else if (s.contains("J")) {
-                                                    if(debug){
-                                                    System.out.println(s + " = " + moved);
-                                                    }
-
                                                 }
                                             }
                                         }
+                                        //ff14000000402cfd0000000000000000
                                         //Do check for our continuated move.
-                                        if (!jumped) //Double multiple jumps are compulsory
+                                        //if (!jumped) //Double multiple jumps are compulsory
                                         {
                                             arr.add("J:" + getMove(x, y, x + xdir + xdir, y + ydir + ydir, side) + ";" + nextState);
                                         }
@@ -299,6 +342,44 @@ public class GuiMain extends javax.swing.JFrame {
             }
         }
         //System.out.println("Returning successors");
+        boolean jumped = false;
+        for (String s : arr) {
+            if (s.contains("J:")) {
+                jumped = true;
+            }
+        }
+        if (jumped) {
+
+            ArrayList<String> arr2 = new ArrayList<String>();
+
+            for (String s : arr) {
+                if (s.contains("J:")) {
+                    arr2.add(s);
+                }
+            }
+            arr = arr2;
+            ArrayList<String> arr3 = new ArrayList<String>();
+
+            for (String s : arr) {
+                String mfr1 = s.substring(2, s.indexOf("->"));
+                String mto1 = s.substring(s.indexOf("->") + 2, s.indexOf(":", 2));
+
+                for (String s2 : arr) {
+                    if (s2.equals(s) == false) {
+                        String mfr2 = s2.substring(2, s2.indexOf("->"));
+                        //String mto2 = s2.substring(s2.indexOf("->") + 2, s2.indexOf(":", 2));
+                        if (mto1.equals(mfr2)) {
+                            arr3.add(s2.replace("J:" + mfr2, "J:" + mfr1));
+
+                        }
+                    }
+                }
+
+            }
+            if (arr3.size() > 0) {
+                arr = arr3;
+            }
+        }
         return arr;
     }
 
@@ -361,12 +442,12 @@ public class GuiMain extends javax.swing.JFrame {
                     goalValue += .25 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * s;
                 }
                 if (((topKing >> p) & 1) == 1) {
-                    goalValue += 1.0 * (1.0 + (y) / 8.0) * -s;
+                    goalValue += 1.0 * (1.0 + (y) / 8.0) * s;
                 }
                 if (((botRow >> p) & 1) == 1) {
                     //eboard[x][y] = 3;
                     //System.out.println("y:" + y + ", " + (y) / 8.0);
-                    goalValue +=.25 * (1.0 + (y) / 8.0) * -s;
+                    goalValue += .25 * (1.0 + (y) / 8.0) * -s;
                 }
                 if (((botKing >> p) & 1) == 1) {
                     goalValue += 1.0 * ((1.0 + (8.0 - (y + 1)) / (8.0))) * -s;
@@ -383,11 +464,11 @@ public class GuiMain extends javax.swing.JFrame {
 
         }
         if (side && (botRow == 0 && botKing == 0)) {
-            System.out.println("Detected move where they have no pieces");
+            //System.out.println("Detected move where they have no pieces");
             goalValue = 9999; //If no enemy pieces remain, take that move
         } else if (side && (topRow == 0 && topKing == 0)) {
-            System.out.println("Detected move where we have no pieces");
-            goalValue = -9999; //If none of our pieces remain, do not let us take
+            // System.out.println("Detected move where we have no pieces");
+            goalValue = -99999; //If none of our pieces remain, do not let us take
         }
         return goalValue;
     }
@@ -578,17 +659,17 @@ public class GuiMain extends javax.swing.JFrame {
     }//GEN-LAST:event_stateBoxPropertyChange
 
     private void checkerBoard1PropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_checkerBoard1PropertyChange
-        if (evt.getPropertyName() == "ToolTipText" && this.st != checkerBoard1.st) {
+        if (evt.getPropertyName().equalsIgnoreCase("ToolTipText") && this.st != checkerBoard1.st) {
             this.st = checkerBoard1.st;
             stateBox.setText(checkerBoard1.state);
             moveHistory.setText(moveHistory.getText() + "\n" + checkerBoard1.lastMove);
             //moveHistory.setText(moveHistory.getText()+ '\n' + evt.getNewValue().toString().split(":")[1] );
             //A move was made.
             turnInd.setText(checkerBoard1.getPlayerTurn() ? "Player" : "Comp");
-            System.out.println("Current State is " + (Evaluate(stateBox.getText(), true)));
+            //System.out.println("Current State is " + (Evaluate(stateBox.getText(), true)));
             jLabel1.setText("C:" + (Evaluate(stateBox.getText(), true)));
             if (currentSuc != null) {
-               
+
                 //currentSuc = new Successor(0, look, checkerBoard1.state, true);
             }
             if (autoMove.isSelected()) {
@@ -605,31 +686,35 @@ public class GuiMain extends javax.swing.JFrame {
     }//GEN-LAST:event_stateLoadActionPerformed
 
     private void compMoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_compMoveActionPerformed
+        turnInd.setText("Thinking");
 
         Successor tree = new Successor(0, look, checkerBoard1.state, true);
 
         double w = 9999999;
         String nextState = "";
         for (Successor s : tree.successors) {
-            if (debug) {
+            //if (debug) {
                 System.out.println("Choice: " + s.value);
-            }
+            //}
             if (s.value < w) {
                 nextState = s.state;
                 w = s.value;
                 currentSuc = s;
             }
         }
-        if (debug) {
+
+        //if (debug) {
             System.out.println("Picked " + w + ": " + nextState);
-        }
+        //}
         checkerBoard1.setState(nextState, true);
         stateBox.setText(nextState);
         jLabel1.setText("C:" + (Evaluate(nextState, true)));
 
         //checkerBoard1.setState(nextState, true);
+        turnInd.setText("Player");
         this.invalidate();
         this.repaint();
+
     }//GEN-LAST:event_compMoveActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed

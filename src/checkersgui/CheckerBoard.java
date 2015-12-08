@@ -94,8 +94,28 @@ public class CheckerBoard extends javax.swing.JPanel {
             }
 
         }
-
-        state = String.format("%08x%08x%08x%08x", topSlot, botSlot, topK, botK);
+        String ts =Integer.toHexString(topSlot);
+        int sz = ts.length();
+        for (int i = 0; i < 8- sz; i++) {
+            ts = "0" + ts;// + ts;
+        }
+        String bs = Integer.toHexString(botSlot);
+        sz = bs.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            bs ="0" + bs;// + bs;
+        }
+        String tk = Integer.toHexString(topK);
+        sz = tk.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            tk = "0" + tk;
+        }
+        String bk = Integer.toHexString(botK);
+        sz = bk.length();
+        for (int i = 0; i < 8 - sz; i++) {
+            bk = "0" + bk;
+        }
+         state = ts + bs + tk + bk;
+        //state = String.format("%08x%08x%08x%08x", topSlot, botSlot, topK, botK);
         //I'm not really sure how to send this to the parent container 
         //this is the best way I can think of so far.
         //The parent container listens for property changes and checks the
